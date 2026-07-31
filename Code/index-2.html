@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ESP32 Microphone Viewer</title>
+
+<style>
+
+body{
+    margin:0;
+    background:#101010;
+    color:white;
+    font-family:Arial, Helvetica, sans-serif;
+    text-align:center;
+}
+
+h1{
+    margin-top:20px;
+}
+
+.container{
+    width:95%;
+    max-width:1100px;
+    margin:auto;
+}
+
+.info{
+    display:flex;
+    justify-content:space-around;
+    flex-wrap:wrap;
+    margin-top:20px;
+}
+
+.card{
+    background:#1f1f1f;
+    border-radius:10px;
+    padding:20px;
+    width:220px;
+    margin:10px;
+}
+
+.value{
+    font-size:34px;
+    font-weight:bold;
+}
+
+canvas{
+    margin-top:30px;
+    width:100%;
+    height:450px;
+    background:black;
+    border:2px solid #00ff00;
+}
+
+#status{
+    font-size:30px;
+    font-weight:bold;
+}
+
+.low{
+    color:#00ff00;
+}
+
+.medium{
+    color:orange;
+}
+
+.high{
+    color:red;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>ESP32 INMP441 Live Microphone</h1>
+
+<div class="info">
+
+<div class="card">
+<div>Amplitude</div>
+<div class="value" id="amp">0</div>
+</div>
+
+<div class="card">
+<div>Peak</div>
+<div class="value" id="peak">0</div>
+</div>
+
+<div class="card">
+<div>Noise Level</div>
+<div id="status" class="low">LOW</div>
+</div>
+
+</div>
+
+<canvas id="wave" width="1000" height="450"></canvas>
+
+</div>
+
+<script>
+
+const canvas=document.getElementById("wave");
+const ctx=canvas.getContext("2d");
+
+function draw(samples){
+
+    ctx.fillStyle = "black";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.strokeStyle = "#00ff00";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    const middle = canvas.height/2;
+
+    let maxValue = 1;
+
+    for(let i=0;i<samples.length;i++)
+        maxValue = Math.max(maxValue, Math.abs(samples[i]));
+
+    const scale = (canvas.height/2)*0.9/maxValue;
+
+    for(let i=0;i<samples.length;i++){
+
+        const x = i*canvas.width/(samples.length-1);
+let mean = 0;
+
+for(let i=0;i<samples.length;i++)
+    mean += samples[i];
+
+mean /= samples.length;
+const y = middle - (samples[i] - mean) * scale;
+        if(i===0)
+            ctx.moveTo(x,y);
+        else
+            ctx.lineTo(x,y);
+    }
+
+    ctx.stroke();
+}
+
+async function update(){
+
+    try{
+
+        const response = await fetch("/status");
+
+        const data = await response.json();
+
+        console.log(data);
+
+        document.getElementById("amp").innerText = data.amplitude;
+        document.getElementById("peak").innerText = data.peak;
+
+        let s = document.getElementById("status");
+
+        if(data.amplitude < 3000){
+            s.innerText = "LOW";
+            s.className = "low";
+        }
+        else if(data.amplitude < 10000){
+            s.innerText = "MEDIUM";
+            s.className = "medium";
+        }
+        else{
+            s.innerText = "HIGH";
+            s.className = "high";
+        }
+
+        draw(data.samples);
+
+    }
+    catch(err){
+        console.error(err);
+    }
+}
+
+setInterval(update,40);
+
+</script>
+
+</body>
+
+</html>
