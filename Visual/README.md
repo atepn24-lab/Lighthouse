@@ -1,1 +1,1 @@
-Add visual documentation with videos explaining Lighthouse and website functionality.
+Visual documentation with videos explaining Lighthouse and website functionality.
